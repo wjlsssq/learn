@@ -1,0 +1,561 @@
+/**
+ * 工程内容页的专属样式。
+ * 所有选择器使用 project-workspace 前缀，避免新页面的布局影响工程列表与文档页。
+ * 本页随右侧主内容自然滚动；外层菜单、面包屑以及主容器宽度由 App.vue 负责。
+ */
+/*
+ * 父组件只在进入工程时给 main 添加 project-main。
+ * 这个组合选择器解除首页 1520px 的上限，让工程内容使用菜单右侧的完整区域；
+ * 现有 main 的内边距继续保留，因此内容不会贴到窗口边缘，也不会影响首页和文档页。
+ */
+.main-content.project-main {
+  max-width: none;
+  margin-inline: 0;
+}
+
+.project-workspace {
+  width: 100%;
+  min-width: 0;
+  padding-bottom: 38px;
+}
+
+/* 顶部返回与分类放在一行，返回按钮只通知父组件，不负责操作弹窗。 */
+.project-workspace-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.project-workspace-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  background: transparent;
+  color: #7c8ca6;
+  font-size: 11px;
+}
+.project-workspace-back:hover {
+  color: var(--color-brand);
+}
+.project-workspace-back-icon {
+  transform: rotate(180deg);
+}
+.project-workspace-kind {
+  padding: 5px 9px;
+  border: 1px solid #e2e9f8;
+  border-radius: 5px;
+  background: #f0f4fd;
+  color: #7891bf;
+  font-size: 10px;
+}
+
+/* 标题区可随可用宽度换行，长工程名称不会把右侧动作挤出屏幕。 */
+.project-workspace-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding-bottom: 28px;
+  margin-bottom: 27px;
+  border-bottom: 1px solid #e3e9f2;
+}
+.project-workspace-identity {
+  display: flex;
+  flex: 1 1 450px;
+  align-items: flex-start;
+  gap: 18px;
+  min-width: 0;
+}
+.project-workspace-symbol {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 62px;
+  height: 62px;
+  margin-top: 2px;
+  border: 1px solid #e2eaff;
+  border-radius: 17px;
+  background: #edf2ff;
+  color: #5e7ee0;
+}
+.project-workspace-identity > div {
+  min-width: 0;
+}
+.project-workspace-identifier {
+  margin: 0 0 7px;
+  color: #8d9db8;
+  font:
+    10px/1.6 'Cascadia Code',
+    'Consolas',
+    monospace;
+  overflow-wrap: anywhere;
+}
+.project-workspace h1 {
+  margin: 0;
+  font-size: 29px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.project-workspace-description {
+  max-width: 780px;
+  margin: 11px 0 0;
+  color: #8391a8;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.project-workspace-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+.project-workspace-tags > span {
+  padding: 5px 8px;
+  border: 1px solid #e7ecf6;
+  border-radius: 5px;
+  background: #f9fafe;
+  color: #8595af;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.project-workspace-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding-top: 15px;
+}
+
+/**
+ * CSS Grid 用列比例分配右侧可用空间。
+ * minmax(0, ...) 允许列内容缩小；命令和 URL 自己处理换行或滚动，避免长文本撑破页面。
+ * 没有设置 max-width，因此父主容器取消首页宽度限制后，工程页会使用完整可用宽度。
+ */
+.project-workspace-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+.project-workspace-primary,
+.project-workspace-secondary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 22px;
+}
+.project-workspace-panel {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #e2e9f3;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 5px #24386103;
+}
+.project-workspace-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 20px;
+  color: #a0aec4;
+}
+.project-workspace-panel-heading h2 {
+  margin: 0;
+  color: #40516e;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.project-workspace-panel-heading p {
+  margin: 6px 0 0;
+  color: #98a4b8;
+  font-size: 10px;
+  line-height: 1.8;
+}
+.project-workspace-hint,
+.project-workspace-empty {
+  margin: 15px 0 0;
+  color: #9ba8bd;
+  font-size: 10px;
+  line-height: 1.9;
+}
+
+/* 工程入口展示完整登记地址，长 URL 换行而不是横向撑开布局。 */
+.project-workspace-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.project-workspace-entry {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #e6ecf6;
+  border-radius: 9px;
+  background: #fcfdff;
+  color: #a0aec5;
+  transition: background 0.15s, border-color 0.15s;
+}
+.project-workspace-entry:hover {
+  border-color: #bacbf0;
+  background: #f6f9ff;
+}
+.project-workspace-entry-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #eef3ff;
+  color: #7f9acb;
+}
+.project-workspace-entry-text {
+  flex: 1;
+  min-width: 0;
+}
+.project-workspace-entry-text strong {
+  display: block;
+  color: #677c9c;
+  font-size: 11px;
+  font-weight: 500;
+}
+.project-workspace-entry-text code {
+  display: block;
+  margin-top: 6px;
+  color: #9aa9c0;
+  font:
+    10px/1.8 'Cascadia Code',
+    'Consolas',
+    monospace;
+  overflow-wrap: anywhere;
+}
+.project-workspace-entry > svg {
+  flex-shrink: 0;
+}
+
+/* 能力区内部再用两列展示简短说明；窄屏下会在后面的媒体查询中切成一列。 */
+.project-workspace-capabilities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 20px;
+}
+.project-workspace-capability {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+.project-workspace-capability > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #edf5f7;
+  color: #7a9daa;
+}
+.project-workspace-capability h3 {
+  margin: 0;
+  color: #6c7e9a;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+.project-workspace-capability p {
+  margin: 6px 0 0;
+  color: #9aa7bb;
+  font-size: 10px;
+  line-height: 1.9;
+}
+
+/* pre 保留命令换行和空格；横向滚动仅发生在命令块内部，方便完整选中复制。 */
+.project-workspace-command {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid #e6ecf6;
+  border-radius: 8px;
+  background: #f7f9fd;
+}
+.project-workspace-command-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px 5px;
+  color: #94a3bb;
+  font-size: 10px;
+}
+.project-workspace-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  border-radius: 5px;
+  background: transparent;
+  color: #8398bd;
+  font-size: 10px;
+}
+.project-workspace-copy:hover {
+  background: #eaf0fc;
+  color: var(--color-brand);
+}
+.project-workspace-command pre {
+  margin: 0;
+  padding: 7px 17px 18px;
+  overflow-x: auto;
+  color: #627b9f;
+  font:
+    11px/1.9 'Cascadia Code',
+    'Consolas',
+    monospace;
+}
+.project-workspace-copy-feedback {
+  min-height: 18px;
+  margin: 11px 0 0;
+  color: #738db7;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+/* 状态标签复用既有 runtime-badge 颜色，实际状态仍然完全来自父组件。 */
+.project-workspace-check {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 5px 0 5px 5px;
+  background: transparent;
+  color: #7f94ba;
+  font-size: 10px;
+}
+.project-workspace-check:hover {
+  color: var(--color-brand);
+}
+.project-workspace-check:disabled {
+  opacity: 0.65;
+}
+.project-workspace-runtime-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.project-workspace-runtime-summary .runtime-badge {
+  min-height: 25px;
+  padding: 0 9px;
+  font-size: 10px;
+}
+.project-workspace-check-time {
+  color: #a1aec3;
+  font-size: 9px;
+}
+.project-workspace-runtime-summary p {
+  width: 100%;
+  margin: 2px 0 0;
+  color: #91a0b7;
+  font-size: 10px;
+  line-height: 1.9;
+}
+.project-workspace-runtime-message {
+  margin: 13px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #f0e6e0;
+  border-radius: 7px;
+  background: #fffaf7;
+  color: #ae9485;
+  font-size: 10px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.project-workspace-runtime-info,
+.project-workspace-metadata {
+  margin: 16px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid #edf0f6;
+}
+.project-workspace-runtime-info > div,
+.project-workspace-metadata > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  font-size: 10px;
+  line-height: 1.7;
+}
+.project-workspace-runtime-info dt,
+.project-workspace-metadata dt {
+  flex-shrink: 0;
+  color: #9aa8be;
+}
+.project-workspace-runtime-info dd,
+.project-workspace-metadata dd {
+  min-width: 0;
+  margin: 0;
+  color: #7084a3;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.project-workspace-runtime-capabilities {
+  margin-top: 14px;
+  color: #9aa8be;
+  font-size: 10px;
+}
+.project-workspace-runtime-capabilities ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.project-workspace-runtime-capabilities li {
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #f1f5fc;
+  color: #8b9ebe;
+  font:
+    9px/1.7 'Cascadia Code',
+    'Consolas',
+    monospace;
+  overflow-wrap: anywhere;
+}
+.project-workspace-pending-info {
+  margin: 16px 0 0;
+  padding-top: 15px;
+  border-top: 1px solid #edf0f6;
+  color: #a3aec1;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+/* 源码位置、学习目标和文档都直接展示既有登记信息，不新增进度状态来源。 */
+.project-workspace-source {
+  display: block;
+  padding: 12px;
+  border: 1px solid #e9edf5;
+  border-radius: 7px;
+  background: #f8fafd;
+  color: #8296b6;
+  font:
+    10px/1.9 'Cascadia Code',
+    'Consolas',
+    monospace;
+  overflow-wrap: anywhere;
+}
+.project-workspace-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.project-workspace-goals li {
+  position: relative;
+  padding-left: 15px;
+  color: #8a9bb5;
+  font-size: 11px;
+  line-height: 1.9;
+}
+.project-workspace-goals li::before {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #afc1e2;
+  content: '';
+}
+.project-workspace-document {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid #e5ecf8;
+  border-radius: 8px;
+  background: #f7faff;
+  color: #8199c0;
+  font-size: 11px;
+}
+.project-workspace-document > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.project-workspace-document:hover {
+  border-color: #b6c8ed;
+  color: var(--color-brand);
+}
+
+/**
+ * 响应式布局第一步：当右侧可用空间不足时，把主列和辅助列按文档顺序排列为一列。
+ * 这里只调整当前工程页，不改变 App.vue 中侧栏的显示规则。
+ */
+@media (max-width: 1080px) {
+  .project-workspace-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+  .project-workspace-heading-actions {
+    padding-top: 0;
+  }
+}
+
+/* 手机视口减少边距，并让能力块单列显示；按钮和长文本保持可操作、可读取。 */
+@media (max-width: 580px) {
+  .project-workspace-topline {
+    margin-bottom: 19px;
+  }
+  .project-workspace-heading {
+    gap: 19px;
+    padding-bottom: 22px;
+    margin-bottom: 21px;
+  }
+  .project-workspace-identity {
+    flex-basis: 100%;
+    gap: 13px;
+  }
+  .project-workspace-symbol {
+    width: 48px;
+    height: 48px;
+    border-radius: 13px;
+  }
+  .project-workspace-symbol svg {
+    width: 25px;
+    height: 25px;
+  }
+  .project-workspace h1 {
+    font-size: 25px;
+  }
+  .project-workspace-description {
+    font-size: 11px;
+  }
+  .project-workspace-panel {
+    padding: 20px;
+  }
+  .project-workspace-capabilities {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 17px;
+  }
+  .project-workspace-entry {
+    gap: 10px;
+    padding: 12px;
+  }
+  .project-workspace-entry-text code {
+    font-size: 9px;
+  }
+  .project-workspace-command pre {
+    font-size: 10px;
+  }
+}

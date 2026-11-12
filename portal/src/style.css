@@ -247,13 +247,26 @@ a {
 .breadcrumbs {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: 13px;
+  row-gap: 4px;
   color: #8b95a8;
   font-size: 11px;
+}
+/* 工程页的面包屑可逐级返回列表；长名称在窄屏中换行，不挤出右侧内容区。 */
+.breadcrumbs a {
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.breadcrumbs a:hover {
+  color: var(--color-brand);
+  text-decoration: underline;
 }
 .breadcrumbs strong {
   font-weight: 500;
   color: #485672;
+  overflow-wrap: anywhere;
 }
 .breadcrumb-home {
   color: #8e9ab0;
@@ -1015,45 +1028,6 @@ h1 {
   color: #5c7094;
   tab-size: 2;
 }
-.project-drawer {
-  position: fixed;
-  inset: 0 0 0 auto;
-  width: min(510px, 100%);
-  max-width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
-  margin: 0;
-  border: 0;
-  border-left: 1px solid #e3e8f2;
-  padding: 0;
-  background: #fff;
-  color: var(--color-text);
-  box-shadow: -15px 0 70px #20305618;
-}
-.project-drawer::backdrop {
-  background: #172a4a35;
-  backdrop-filter: blur(2px);
-}
-.drawer-content {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-.drawer-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  padding: 20px 28px;
-  border-bottom: 1px solid #edf0f6;
-}
-.drawer-top > span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #7e8da6;
-}
 .icon-button {
   display: inline-grid;
   place-items: center;
@@ -1067,235 +1041,6 @@ h1 {
 .icon-button:hover {
   background: #f0f4fb;
   color: #3158db;
-}
-.drawer-main {
-  padding: 28px;
-}
-.drawer-project-icon {
-  width: 54px;
-  height: 54px;
-  display: grid;
-  place-items: center;
-  color: #6686e1;
-  background: #edf2ff;
-  border-radius: 14px;
-  margin-bottom: 23px;
-}
-.drawer-main .eyebrow {
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  margin-bottom: 8px;
-}
-.drawer-main h2 {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-}
-.drawer-description {
-  color: #8c99af;
-  font-size: 11px;
-  line-height: 1.9;
-  margin: 13px 0 0;
-}
-.drawer-main .project-tags {
-  margin-top: 15px;
-}
-.runtime-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 23px;
-  padding: 13px 14px;
-  border: 1px solid #e6ecf6;
-  border-radius: 8px;
-  background: #fcfdff;
-}
-.runtime-panel > div:first-child {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.checked-at {
-  font-size: 9px;
-  color: #a0abc0;
-}
-.runtime-panel .button {
-  min-height: 26px;
-  font-size: 10px;
-}
-.runtime-message {
-  width: 100%;
-  font-size: 10px;
-  color: #a08d89;
-  line-height: 1.8;
-  margin: 4px 0 0;
-}
-.service-info {
-  width: 100%;
-  margin: 10px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid #edf1f8;
-  font-size: 10px;
-}
-.service-info > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 5px 0;
-}
-.service-info dt {
-  color: #9aa7bc;
-}
-.service-info dd {
-  color: #687c9c;
-  margin: 0;
-  word-break: break-word;
-}
-.service-entries {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
-}
-.service-entries .button {
-  min-height: 34px;
-  font-size: 10px;
-}
-.detail-section {
-  margin-top: 27px;
-}
-.detail-section h3 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 600;
-  margin: 0 0 13px;
-}
-.detail-section h3 small {
-  color: #9ba8bd;
-  font-size: 9px;
-  font-weight: 400;
-}
-.source-path {
-  display: block;
-  padding: 12px 13px;
-  border: 1px solid #edf0f6;
-  border-radius: 7px;
-  background: #f9fafd;
-  font:
-    10px/1.6 'Cascadia Code',
-    'Consolas',
-    monospace;
-  color: #8393af;
-  overflow-wrap: anywhere;
-}
-.capability-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 17px 15px;
-  padding-top: 3px;
-}
-.capability-list > div {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-}
-.capability-check {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  color: #6e91a6;
-  background: #eef5f8;
-}
-.capability-list p {
-  margin: 0;
-}
-.capability-list strong {
-  display: block;
-  font-size: 10px;
-  font-weight: 500;
-  color: #6c7e9a;
-}
-.capability-list p > span {
-  display: block;
-  font-size: 9px;
-  color: #9aa7bc;
-  line-height: 1.9;
-  margin-top: 5px;
-}
-.command-block {
-  background: #f7f9fd;
-  border: 1px solid #e8edf6;
-  border-radius: 7px;
-  margin: 9px 0;
-}
-.command-block > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 9px 3px 13px;
-  font-size: 9px;
-  color: #99a7bf;
-}
-.command-block pre {
-  margin: 0;
-  padding: 3px 13px 13px;
-  overflow-x: auto;
-  font:
-    9px/1.9 'Cascadia Code',
-    'Consolas',
-    monospace;
-  color: #637b9f;
-}
-.command-block .icon-button {
-  width: 25px;
-  height: 25px;
-}
-.copy-feedback {
-  font-size: 10px;
-  color: #6f8ab9;
-  margin: 0;
-  min-height: 14px;
-}
-.learning-goals {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.learning-goals li {
-  position: relative;
-  padding-left: 12px;
-  font-size: 10px;
-  color: #8999b1;
-  line-height: 1.9;
-  margin: 7px 0;
-}
-.learning-goals li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 7px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #acbddc;
-}
-.drawer-footer {
-  display: flex;
-  gap: 10px;
-  margin-top: auto;
-  padding: 20px 28px;
-  border-top: 1px solid #edf0f6;
-  background: #fcfdff;
-}
-.drawer-footer > .button-primary {
-  flex: 1;
 }
 .mobile-menu {
   display: none;
@@ -1748,14 +1493,5 @@ h1 {
   .document-code pre {
     font-size: 10px;
     padding: 14px;
-  }
-  .drawer-top {
-    padding: 17px 22px;
-  }
-  .drawer-main {
-    padding: 23px;
-  }
-  .drawer-footer {
-    padding: 18px 23px;
   }
 }

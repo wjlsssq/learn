@@ -2,10 +2,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createHttpClient, HttpClientError } from '@learn/http'
 import AppIcon from './components/AppIcon.vue'
+import ProjectWorkspace from './components/ProjectWorkspace.vue'
 import { documents, parseDocument } from './documents'
+import { parseWorkspaceHash, projectHash } from './navigation'
 import { foundationBaseURL, projects, selectProjects } from './projects'
 import type { ProjectCategory, ProjectDefinition, ProjectSort } from './projects'
 
+// App 保留左侧菜单和顶部导航，只根据 Hash 地址替换 main 内的列表、工程页或文档。
+// 工程内容独立为 ProjectWorkspace，导航与探测仍由本组件管理，避免页面切换丢失状态。
+
+/** 运行状态只来源于用户手动探测；刚打开页面时为 unknown，不推断服务已经运行。 */
 type RuntimeState = 'unknown' | 'checking' | 'online' | 'offline'
 interface FoundationInfo {
   name: string
@@ -20,20 +26,23 @@ interface RuntimeRecord {
   message?: string
 }
 
+// HTTP 客户端负责传输机制；这里配置基础服务的地址及 4 秒超时，不负责启动进程。
 const client = createHttpClient({ baseURL: foundationBaseURL, timeoutMs: 4_000 })
 const query = ref('')
 const category = ref<ProjectCategory>('all')
 const sort = ref<ProjectSort>('recent')
 const route = ref(window.location.hash || '#projects')
+const navigation = computed(() => parseWorkspaceHash(route.value))
 const mobileNavOpen = ref(false)
 const searchInput = ref<HTMLInputElement>()
-const drawer = ref<HTMLDialogElement>()
-const selectedProject = ref<ProjectDefinition | null>(null)
+const mainContent = ref<HTMLElement>()
+// 以工程 ID 保存探测记录，因此返回列表或进入工程页时能够复用同一份真实结果。
 const runtime = ref<Record<string, RuntimeRecord>>({})
 const controllers = new Map<string, AbortController>()
 const copyFeedback = ref('')
 let copyTimer: ReturnType<typeof setTimeout> | undefined
 
+/** 恢复用户上次选择的展示方式；浏览器禁用存储时退回网格，不影响页面可用性。 */
 function storedView(): 'grid' | 'list' {
   try {
     return localStorage.getItem('learn.portal.view') === 'list' ? 'list' : 'grid'
@@ -53,14 +62,29 @@ watch(view, (value) => {
 const visibleProjects = computed(() =>
   selectProjects(projects, query.value, category.value, sort.value),
 )
-const currentDocument = computed(() =>
-  documents.find((document) => route.value === `#docs/${document.id}`),
-)
+// computed 会在 URL 改变时重新查询。工程页不使用弹窗状态，刷新当前地址仍能定位工程。
+const currentProject = computed(() => {
+  const currentRoute = navigation.value
+  return currentRoute.kind === 'project'
+    ? projects.find((project) => project.id === currentRoute.projectId)
+    : undefined
+})
+const currentDocument = computed(() => {
+  const currentRoute = navigation.value
+  return currentRoute.kind === 'document'
+    ? documents.find((document) => document.id === currentRoute.documentId)
+    : undefined
+})
 const documentBlocks = computed(() =>
   currentDocument.value ? parseDocument(currentDocument.value.content) : [],
 )
 const categoryTitle = computed(
   () => ({ all: '全部工程', foundation: '基础工程', learning: '学习工程' })[category.value],
+)
+// 在工程页中高亮工程所属分类，列表筛选条件仍保留，便于按原分类返回。
+const activeCategory = computed(() => currentProject.value?.category ?? category.value)
+const missingPageTitle = computed(() =>
+  navigation.value.kind === 'project' ? '没有找到这个工程' : '没有找到这个页面',
 )
 const onlineCount = computed(
   () => Object.values(runtime.value).filter((item) => item.state === 'online').length,
@@ -71,9 +95,6 @@ const checking = computed(() =>
 const checkedCount = computed(
   () => Object.values(runtime.value).filter((item) => item.checkedAt).length,
 )
-const selectedRuntime = computed(() =>
-  selectedProject.value ? getRuntime(selectedProject.value.id) : { state: 'unknown' as const },
-)
 const stateLabels: Record<RuntimeState, string> = {
   unknown: '未检测',
   checking: '检查中',
@@ -81,16 +102,41 @@ const stateLabels: Record<RuntimeState, string> = {
   offline: '离线',
 }
 
+/** 没有探测记录时返回默认状态，列表卡片和工程页遵循同一个状态来源。 */
 function getRuntime(id: string): RuntimeRecord {
   return runtime.value[id] ?? { state: 'unknown' }
 }
 
+/** 返回工程列表并选择分类；同步更新响应式地址，方便键盘快捷键等待下一次 DOM 更新。 */
 function navigateProjects(nextCategory: ProjectCategory = 'all') {
   category.value = nextCategory
+  route.value = '#projects'
   window.location.hash = 'projects'
   mobileNavOpen.value = false
 }
 
+/** 返回入口保留当前列表分类；在新标签页直接进入工程时，默认返回全部工程。 */
+function returnToProjects() {
+  navigateProjects(category.value)
+  window.scrollTo({ top: 0, behavior: 'auto' })
+}
+
+/** 跳过导航直接聚焦主区，不改 Hash，避免无障碍跳转被误认为一次页面导航。 */
+function focusMainContent() {
+  mainContent.value?.focus({ preventScroll: true })
+}
+
+/** 在用户点击检测时重新读取当前工程，避免快速切换地址后仍使用旧页面的引用。 */
+async function checkCurrentProject() {
+  const project = currentProject.value
+  if (project) await checkProject(project)
+}
+
+/**
+ * 按用户操作探测服务：先读取健康状态，再补充版本等信息。
+ * 健康接口成功但信息接口失败时仍显示在线，并单独提示信息读取问题。
+ * AbortController 用于页面销毁时取消请求，避免旧请求再写回已销毁的组件。
+ */
 async function checkProject(project: ProjectDefinition) {
   if (getRuntime(project.id).state === 'checking') return
   const controller = new AbortController()
@@ -137,10 +183,12 @@ async function checkProject(project: ProjectDefinition) {
   }
 }
 
+/** 列表上的批量检测复用单工程检测；它只发送 HTTP 请求，不启动任何服务。 */
 async function checkAll() {
   await Promise.all(projects.map(checkProject))
 }
 
+/** 只复制命令文本；用户在终端自行执行，浏览器无权限代为启动项目。 */
 async function copyCommand(value: string) {
   clearTimeout(copyTimer)
   try {
@@ -154,25 +202,21 @@ async function copyCommand(value: string) {
   }, 3_000)
 }
 
-function closeDrawer() {
-  drawer.value?.close()
-  selectedProject.value = null
-}
-function backdropClick(event: MouseEvent) {
-  if (event.target === drawer.value) closeDrawer()
-}
-
-watch(selectedProject, async (project) => {
-  if (project) {
-    await nextTick()
-    drawer.value?.showModal()
-  }
-})
-
+/**
+ * 原生链接、浏览器前进和后退都会触发 hashchange。
+ * Vue 在 nextTick 后才完成模板替换，因此工程页的聚焦和滚动放在 DOM 更新之后。
+ */
 function hashChanged() {
   route.value = window.location.hash || '#projects'
   mobileNavOpen.value = false
+  clearTimeout(copyTimer)
+  copyFeedback.value = ''
+  void nextTick(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    if (navigation.value.kind === 'project') focusMainContent()
+  })
 }
+/** / 快捷键返回列表并定位搜索框；输入控件内的 / 作为普通字符保留。 */
 function keyboardShortcut(event: KeyboardEvent) {
   if (event.key === 'Escape') mobileNavOpen.value = false
   const target = event.target as HTMLElement | null
@@ -182,8 +226,7 @@ function keyboardShortcut(event: KeyboardEvent) {
     event.metaKey ||
     event.altKey ||
     target?.isContentEditable ||
-    /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName ?? '') ||
-    drawer.value?.open
+    /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName ?? '')
   )
     return
   event.preventDefault()
@@ -196,6 +239,7 @@ onMounted(() => {
   window.addEventListener('keydown', keyboardShortcut)
 })
 onBeforeUnmount(() => {
+  // 移除全局事件、终止请求和清理提示计时器，避免热更新或卸载后留下旧的副作用。
   window.removeEventListener('hashchange', hashChanged)
   window.removeEventListener('keydown', keyboardShortcut)
   controllers.forEach((controller) => controller.abort())
@@ -204,7 +248,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <a class="skip-link" href="#main-content" @click.prevent="focusMainContent">跳到主要内容</a>
   <div class="workspace">
     <button
       v-if="mobileNavOpen"
@@ -230,14 +274,14 @@ onBeforeUnmount(() => {
       <nav class="project-nav" aria-label="工程分类">
         <a
           href="#projects"
-          :class="{ active: !currentDocument && category === 'all' }"
+          :class="{ active: !currentDocument && activeCategory === 'all' }"
           @click="navigateProjects('all')"
           ><AppIcon name="grid" /><span>全部工程</span
           ><span class="nav-count">{{ projects.length }}</span></a
         >
         <a
           href="#projects"
-          :class="{ active: !currentDocument && category === 'foundation' }"
+          :class="{ active: !currentDocument && activeCategory === 'foundation' }"
           @click="navigateProjects('foundation')"
           ><AppIcon name="layers" /><span>基础工程</span
           ><span class="nav-count">{{
@@ -246,7 +290,7 @@ onBeforeUnmount(() => {
         >
         <a
           href="#projects"
-          :class="{ active: !currentDocument && category === 'learning' }"
+          :class="{ active: !currentDocument && activeCategory === 'learning' }"
           @click="navigateProjects('learning')"
           ><AppIcon name="compass" /><span>学习工程</span
           ><span class="nav-count">{{
@@ -294,7 +338,7 @@ onBeforeUnmount(() => {
 
     <div class="workspace-body">
       <header class="topbar">
-        <div class="breadcrumbs">
+        <nav class="breadcrumbs" aria-label="面包屑">
           <button
             class="icon-button mobile-menu"
             :aria-expanded="mobileNavOpen"
@@ -303,18 +347,45 @@ onBeforeUnmount(() => {
           >
             <AppIcon name="menu" />
           </button>
-          <AppIcon class="breadcrumb-home" name="folder" :size="17" /><span>工作空间</span
-          ><span class="breadcrumb-divider">/</span
-          ><strong>{{ currentDocument?.title ?? categoryTitle }}</strong>
-        </div>
+          <!-- 面包屑属于固定页面壳；进入工程后增加末级名称，前两级仍可返回列表。 -->
+          <AppIcon class="breadcrumb-home" name="folder" :size="17" />
+          <a href="#projects" @click="navigateProjects()">工作空间</a>
+          <span class="breadcrumb-divider" aria-hidden="true">/</span>
+          <template v-if="currentProject">
+            <a href="#projects" @click="navigateProjects(category)">{{ categoryTitle }}</a>
+            <span class="breadcrumb-divider" aria-hidden="true">/</span>
+            <strong aria-current="page">{{ currentProject.name }}</strong>
+          </template>
+          <strong v-else aria-current="page">{{
+            currentDocument?.title ??
+            (navigation.kind === 'projects' ? categoryTitle : missingPageTitle)
+          }}</strong>
+        </nav>
         <a class="topbar-docs" href="#docs/development"
           ><AppIcon name="book" :size="17" /><span>开发指南</span
           ><AppIcon name="external" :size="13"
         /></a>
       </header>
 
-      <main id="main-content" class="main-content" tabindex="-1">
-        <template v-if="!currentDocument">
+      <main
+        id="main-content"
+        ref="mainContent"
+        class="main-content"
+        :class="{ 'project-main': navigation.kind === 'project' }"
+        tabindex="-1"
+      >
+        <!-- 工程页占据整个主内容区；首页统计、搜索和卡片不会继续叠在工程内容上方。 -->
+        <ProjectWorkspace
+          v-if="currentProject"
+          :project="currentProject"
+          :runtime="getRuntime(currentProject.id)"
+          :copy-feedback="copyFeedback"
+          @back="returnToProjects"
+          @check="checkCurrentProject"
+          @copy="copyCommand"
+        />
+
+        <template v-else-if="navigation.kind === 'projects'">
           <section class="page-heading">
             <div>
               <p class="eyebrow">YOUR LEARNING, ORGANIZED</p>
@@ -423,13 +494,13 @@ onBeforeUnmount(() => {
               class="project-grid"
               :class="{ 'list-view': view === 'list' }"
             >
-              <button
+              <a
                 v-for="project in visibleProjects"
                 :key="project.id"
                 class="project-card"
                 :class="{ 'project-row': view === 'list' }"
-                :aria-label="`查看${project.name}的工程详情`"
-                @click="selectedProject = project"
+                :aria-label="`进入${project.name}`"
+                :href="projectHash(project.id)"
               >
                 <span class="card-top"
                   ><span class="project-folder" aria-hidden="true"
@@ -480,7 +551,7 @@ onBeforeUnmount(() => {
                   ><span><AppIcon name="folder" :size="14" />独立工程</span
                   ><span>{{ project.updatedAt.replaceAll('-', '.') }}</span></span
                 >
-              </button>
+              </a>
 
               <div v-if="view === 'grid' && !query && category === 'all'" class="next-project-note">
                 <span class="next-project-symbol"><AppIcon name="compass" :size="25" /></span
@@ -523,7 +594,7 @@ onBeforeUnmount(() => {
           </footer>
         </template>
 
-        <template v-else>
+        <template v-else-if="currentDocument">
           <section class="page-heading document-heading">
             <div>
               <p class="eyebrow">WORKSPACE DOCUMENTATION</p>
@@ -553,135 +624,17 @@ onBeforeUnmount(() => {
             </article>
           </section>
         </template>
+
+        <!-- 未登记的工程或错误地址必须有明确反馈，避免被误当作列表或空白页面。 -->
+        <section v-else class="empty-state" aria-labelledby="missing-page-title">
+          <span class="empty-icon"><AppIcon name="folder" :size="34" /></span>
+          <h1 id="missing-page-title">{{ missingPageTitle }}</h1>
+          <p>地址可能已变更，或对应内容尚未接入工作台。</p>
+          <a class="button button-secondary" href="#projects" @click="navigateProjects()">
+            返回工程列表
+          </a>
+        </section>
       </main>
     </div>
   </div>
-
-  <dialog
-    ref="drawer"
-    class="project-drawer"
-    aria-labelledby="drawer-title"
-    @click="backdropClick"
-    @close="selectedProject = null"
-  >
-    <div v-if="selectedProject" class="drawer-content">
-      <header class="drawer-top">
-        <span><AppIcon name="folder" :size="17" />工程详情</span
-        ><button class="icon-button" aria-label="关闭工程详情" autofocus @click="closeDrawer">
-          <AppIcon name="close" />
-        </button>
-      </header>
-      <div class="drawer-main">
-        <span class="drawer-project-icon"><AppIcon name="code" :size="28" /></span>
-        <p class="eyebrow">FOUNDATION PROJECT</p>
-        <h2 id="drawer-title">{{ selectedProject.name }}</h2>
-        <p class="drawer-description">{{ selectedProject.description }}</p>
-        <div class="project-tags">
-          <span v-for="tag in selectedProject.tags" :key="tag">{{ tag }}</span>
-        </div>
-        <div class="runtime-panel">
-          <div>
-            <span class="runtime-badge" :class="selectedRuntime.state"
-              ><span class="status-dot"></span>{{ stateLabels[selectedRuntime.state] }}</span
-            ><span v-if="selectedRuntime.checkedAt" class="checked-at"
-              >检测于 {{ selectedRuntime.checkedAt }}</span
-            >
-          </div>
-          <button
-            class="button button-quiet"
-            :disabled="selectedRuntime.state === 'checking'"
-            @click="checkProject(selectedProject)"
-          >
-            <AppIcon
-              name="refresh"
-              :size="15"
-              :class="{ spinning: selectedRuntime.state === 'checking' }"
-            />检测
-          </button>
-          <p v-if="selectedRuntime.message" class="runtime-message">
-            {{ selectedRuntime.message }}
-          </p>
-          <dl v-if="selectedRuntime.info" class="service-info">
-            <div>
-              <dt>服务</dt>
-              <dd>{{ selectedRuntime.info.name }}</dd>
-            </div>
-            <div>
-              <dt>版本</dt>
-              <dd>{{ selectedRuntime.info.version }}</dd>
-            </div>
-            <div>
-              <dt>Java</dt>
-              <dd>{{ selectedRuntime.info.javaVersion }}</dd>
-            </div>
-          </dl>
-        </div>
-        <div class="detail-section">
-          <h3>工程入口<small>服务启动后可访问</small></h3>
-          <div class="service-entries">
-            <a
-              v-for="entry in selectedProject.entries"
-              :key="entry.url"
-              class="button button-secondary"
-              :href="entry.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              ><AppIcon :name="entry.label === '健康检查' ? 'activity' : 'external'" :size="15" />{{
-                entry.label
-              }}<AppIcon name="external" :size="12"
-            /></a>
-          </div>
-        </div>
-        <div class="detail-section">
-          <h3>工程位置</h3>
-          <code class="source-path">{{ selectedProject.sourcePath }}</code>
-        </div>
-        <div class="detail-section">
-          <h3>基础能力</h3>
-          <div class="capability-list">
-            <div v-for="capability in selectedProject.capabilities" :key="capability.title">
-              <span class="capability-check"><AppIcon name="check" :size="13" /></span>
-              <p>
-                <strong>{{ capability.title }}</strong><span>{{ capability.description }}</span>
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="detail-section">
-          <h3>启动与验证<small>在仓库根目录执行</small></h3>
-          <div
-            v-for="command in selectedProject.commands"
-            :key="command.label"
-            class="command-block"
-          >
-            <div>
-              <span>{{ command.label }}</span><button
-                class="icon-button"
-                :aria-label="`复制${command.label}命令`"
-                @click="copyCommand(command.value)"
-              >
-                <AppIcon name="copy" :size="15" />
-              </button>
-            </div>
-            <pre><code>{{ command.value }}</code></pre>
-          </div>
-          <p class="copy-feedback" role="status">{{ copyFeedback }}</p>
-        </div>
-        <div class="detail-section">
-          <h3>学习目标</h3>
-          <ul class="learning-goals">
-            <li v-for="goal in selectedProject.learningGoals" :key="goal">{{ goal }}</li>
-          </ul>
-        </div>
-      </div>
-      <footer class="drawer-footer">
-        <a
-          class="button button-primary"
-          :href="`#docs/${selectedProject.documentId}`"
-          @click="closeDrawer"
-          ><AppIcon name="book" :size="17" />阅读开发指南<AppIcon name="arrow" :size="16" /></a
-        ><button class="button button-secondary" @click="closeDrawer">关闭</button>
-      </footer>
-    </div>
-  </dialog>
 </template>
