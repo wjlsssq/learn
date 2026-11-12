@@ -1,0 +1,9 @@
+packages:
+  - portal
+  - shared/frontend/*
+  - projects/*/web
+
+minimumReleaseAgeExclude:
+  - prettier@3.10.0
+
+strictPeerDependencies: true

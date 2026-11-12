@@ -1,0 +1,29 @@
+{
+  "name": "learn-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22.12.0 <23 || >=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @learn/portal dev",
+    "dev:backend": "node tooling/backend.mjs dev",
+    "build": "pnpm -r --if-present build",
+    "build:backend": "node tooling/backend.mjs build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check:backend": "node tooling/backend.mjs verify"
+  },
+  "devDependencies": {
+    "eslint": "10.14.0",
+    "eslint-plugin-vue": "10.12.1",
+    "prettier": "3.10.0",
+    "typescript-eslint": "8.72.2"
+  }
+}
