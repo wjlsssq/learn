@@ -137,11 +137,12 @@ const categoryLabel = computed(() =>
     </header>
 
     <!--
-      内容区使用正常文档流中的两列布局：主要内容较宽，状态和学习信息位于辅助列。
-      小屏幕通过 CSS 改为一列；没有 fixed 定位，也不会限制为原抽屉的窄宽度。
+      内容区按任务分成三个独立纵向组：操作入口、能力学习、运行参考。
+      每组中的卡片由真实内容决定高度，不为了对齐而拉高短卡片。
+      CSS 根据可用空间切换三列、两列和单列；DOM 中的阅读顺序始终保持不变。
     -->
     <div class="project-workspace-columns">
-      <div class="project-workspace-primary">
+      <div class="project-workspace-group project-workspace-primary">
         <!-- 真实入口：只渲染 projects.ts 已登记的地址，不为尚未实现的业务制造假页面。 -->
         <section class="project-workspace-panel" aria-labelledby="project-entry-title">
           <header class="project-workspace-panel-heading">
@@ -174,7 +175,47 @@ const categoryLabel = computed(() =>
           <p class="project-workspace-hint">入口是否可访问取决于实际服务状态，点击链接不会启动进程。</p>
         </section>
 
-        <!-- 能力来自工程登记信息；它与下方服务实时返回的 capabilities 分别表达两类信息。 -->
+        <!--
+          命令紧跟访问入口，集中放置用户最常执行的操作。
+          命令仅展示和复制，不在浏览器内执行；完整原文发送给父组件处理剪贴板。
+        -->
+        <section class="project-workspace-panel" aria-labelledby="project-command-title">
+          <header class="project-workspace-panel-heading">
+            <div>
+              <h2 id="project-command-title">启动与验证</h2>
+              <p>在仓库根目录的终端中执行对应命令。</p>
+            </div>
+            <AppIcon name="terminal" :size="20" />
+          </header>
+          <div
+            v-for="command in props.project.commands"
+            :key="command.label"
+            class="project-workspace-command"
+          >
+            <div class="project-workspace-command-heading">
+              <span>{{ command.label }}</span>
+              <button
+                class="project-workspace-copy"
+                type="button"
+                :aria-label="`复制${command.label}命令`"
+                @click="emit('copy', command.value)"
+              >
+                <AppIcon name="copy" :size="16" />
+                复制
+              </button>
+            </div>
+            <pre><code>{{ command.value }}</code></pre>
+          </div>
+          <p v-if="!props.project.commands.length" class="project-workspace-empty">
+            当前工程尚未登记启动或验证命令。
+          </p>
+          <!-- role=status 让读屏软件也能获知复制结果；空反馈不会预留一块空白区域。 -->
+          <p class="project-workspace-copy-feedback" role="status">{{ props.copyFeedback }}</p>
+        </section>
+      </div>
+
+      <div class="project-workspace-group project-workspace-learning">
+        <!-- 能力和目标放在同一纵向组，阅读时无需在页面两端反复寻找关联内容。 -->
         <section class="project-workspace-panel" aria-labelledby="project-capability-title">
           <header class="project-workspace-panel-heading">
             <div>
@@ -199,46 +240,19 @@ const categoryLabel = computed(() =>
           <p v-else class="project-workspace-empty">当前工程尚未登记能力说明。</p>
         </section>
 
-        <!--
-          命令仅展示和复制，不在浏览器内执行。
-          点击复制时把完整原文发送给父组件；成功或失败说明也由父组件统一反馈。
-        -->
-        <section class="project-workspace-panel" aria-labelledby="project-command-title">
+        <section class="project-workspace-panel" aria-labelledby="project-goal-title">
           <header class="project-workspace-panel-heading">
-            <div>
-              <h2 id="project-command-title">启动与验证</h2>
-              <p>在仓库根目录的终端中执行对应命令。</p>
-            </div>
-            <AppIcon name="terminal" :size="19" />
+            <div><h2 id="project-goal-title">学习目标</h2></div>
+            <AppIcon name="compass" :size="20" />
           </header>
-          <div
-            v-for="command in props.project.commands"
-            :key="command.label"
-            class="project-workspace-command"
-          >
-            <div class="project-workspace-command-heading">
-              <span>{{ command.label }}</span>
-              <button
-                class="project-workspace-copy"
-                type="button"
-                :aria-label="`复制${command.label}命令`"
-                @click="emit('copy', command.value)"
-              >
-                <AppIcon name="copy" :size="15" />
-                复制
-              </button>
-            </div>
-            <pre><code>{{ command.value }}</code></pre>
-          </div>
-          <p v-if="!props.project.commands.length" class="project-workspace-empty">
-            当前工程尚未登记启动或验证命令。
-          </p>
-          <!-- role=status 让读屏软件也能获知复制结果，反馈内容仍由父组件维护。 -->
-          <p class="project-workspace-copy-feedback" role="status">{{ props.copyFeedback }}</p>
+          <ul v-if="props.project.learningGoals.length" class="project-workspace-goals">
+            <li v-for="goal in props.project.learningGoals" :key="goal">{{ goal }}</li>
+          </ul>
+          <p v-else class="project-workspace-empty">当前工程尚未登记学习目标。</p>
         </section>
       </div>
 
-      <aside class="project-workspace-secondary" aria-label="工程状态与学习信息">
+      <aside class="project-workspace-group project-workspace-secondary" aria-label="工程状态与参考信息">
         <!-- 运行状态来自同一份父级探测结果；可选字段不存在时保持明确的空状态。 -->
         <section class="project-workspace-panel" aria-labelledby="project-runtime-title">
           <header class="project-workspace-panel-heading">
@@ -316,17 +330,6 @@ const categoryLabel = computed(() =>
               <dd>{{ props.project.updatedAt }}</dd>
             </div>
           </dl>
-        </section>
-
-        <section class="project-workspace-panel" aria-labelledby="project-goal-title">
-          <header class="project-workspace-panel-heading">
-            <div><h2 id="project-goal-title">学习目标</h2></div>
-            <AppIcon name="compass" :size="19" />
-          </header>
-          <ul v-if="props.project.learningGoals.length" class="project-workspace-goals">
-            <li v-for="goal in props.project.learningGoals" :key="goal">{{ goal }}</li>
-          </ul>
-          <p v-else class="project-workspace-empty">当前工程尚未登记学习目标。</p>
         </section>
 
         <!-- 文档采用现有 hash 导航，点击后由父组件切换右侧内容，保留同一套外层布局。 -->

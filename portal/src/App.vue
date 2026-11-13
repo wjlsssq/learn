@@ -489,10 +489,15 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
+            <!-- 根据真实工程数量选择列数；只有一个工程时用横向信息卡，避免留下空网格槽。 -->
             <div
               v-if="visibleProjects.length"
               class="project-grid"
-              :class="{ 'list-view': view === 'list' }"
+              :class="{
+                'list-view': view === 'list',
+                'single-project': visibleProjects.length === 1,
+                'two-projects': visibleProjects.length === 2,
+              }"
             >
               <a
                 v-for="project in visibleProjects"
@@ -552,13 +557,6 @@ onBeforeUnmount(() => {
                   ><span>{{ project.updatedAt.replaceAll('-', '.') }}</span></span
                 >
               </a>
-
-              <div v-if="view === 'grid' && !query && category === 'all'" class="next-project-note">
-                <span class="next-project-symbol"><AppIcon name="compass" :size="25" /></span
-                ><strong>下一段学习，从这里开始</strong>
-                <p>有了新的学习目标，再接入新的能力。<br />每个工程，都保留自己的清晰边界。</p>
-                <a href="#docs/onboarding">了解工程接入规则<AppIcon name="arrow" :size="15" /></a>
-              </div>
             </div>
             <div v-else class="empty-state">
               <span class="empty-icon"
@@ -586,7 +584,11 @@ onBeforeUnmount(() => {
               <strong>环境按需启动，学习保持轻量。</strong>
               <p>先在终端启动当前工程，再检测运行状态。工作台负责组织入口与文档。</p>
             </div>
-            <a href="#docs/development">查看开发指南<AppIcon name="arrow" :size="16" /></a>
+            <!-- 接入提示收为普通操作行，不再占用一个与真实工程等高的占位卡片。 -->
+            <div class="workspace-guide-actions">
+              <a href="#docs/onboarding">工程接入指南<AppIcon name="arrow" :size="16" /></a>
+              <a href="#docs/development">查看开发指南<AppIcon name="arrow" :size="16" /></a>
+            </div>
           </section>
           <footer class="page-footer">
             <span><span class="footer-dot"></span>独立工程，持续积累。</span
