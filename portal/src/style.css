@@ -582,12 +582,12 @@ h1 {
 
 /*
  * 首页按实际工程数收列：1 个工程显示横向信息卡，2 个工程用 2 列，其余最多 3 列。
- * align-items:start 避免为了等高把内容较少的卡片拉出大片空白。
  */
 .project-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
+  grid-auto-rows: 1fr;
+  align-items: stretch;
   gap: var(--space-4);
 }
 .project-grid.two-projects {
@@ -668,6 +668,7 @@ h1 {
 }
 .card-body {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
 }
@@ -737,7 +738,6 @@ h1 {
 .list-view {
   display: flex;
   flex-direction: column;
-  /* 纵向 Flex 的交叉轴是水平方向；覆盖网格的 start，让每一行占满可用宽度。 */
   align-items: stretch;
   gap: var(--space-3);
 }
