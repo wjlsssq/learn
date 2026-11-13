@@ -1,0 +1,76 @@
+# 所有中间件仅属于 order-lab。密码必须由环境变量提供，不使用源码内默认凭据。
+server:
+  address: 127.0.0.1
+  port: ${ORDER_PORT:18081}
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: 80
+    accept-count: 100
+spring:
+  application:
+    name: order-lab
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  datasource:
+    url: ${ORDER_DB_URL:jdbc:mysql://127.0.0.1:13306/order_lab?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true}
+    username: ${ORDER_DB_USER:order_app}
+    password: ${ORDER_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 16
+      connection-timeout: 3000
+      # 控制行锁等待；HTTP 超时不能自动回滚已提交的事务。
+      connection-init-sql: SET SESSION innodb_lock_wait_timeout=5
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${ORDER_REDIS_HOST:127.0.0.1}
+      port: ${ORDER_REDIS_PORT:16379}
+      password: ${ORDER_REDIS_PASSWORD}
+      timeout: 2s
+  rabbitmq:
+    host: ${ORDER_MQ_HOST:127.0.0.1}
+    port: ${ORDER_MQ_PORT:15672}
+    username: ${ORDER_MQ_USER:order_app}
+    password: ${ORDER_MQ_PASSWORD}
+    virtual-host: order-lab
+    connection-timeout: 3s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 2
+        max-concurrency: 4
+        prefetch: 8
+        default-requeue-rejected: false
+        # 业务异常交给容器有限重试，最终拒绝进入 DLQ；禁止立即无限 requeue。
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 5s
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
+    default-statement-timeout: 5
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+order:
+  # 实验及消息重放接口仅供本机学习，默认不开放；不能作为生产支付回调。
+  lab-enabled: ${ORDER_LAB_ENABLED:false}
+logging:
+  pattern:
+    level: "%5p [traceId=%X{traceId}]"

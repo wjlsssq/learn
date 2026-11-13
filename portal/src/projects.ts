@@ -20,6 +20,26 @@ export const foundationBaseURL = (
 /** Register implemented projects only; planned capabilities belong in PROGRESS.md. */
 export const projects: readonly ProjectDefinition[] = [
   {
+    id: 'order-lab',
+    name: '订单可靠性实验室',
+    description: '从并发下单到幂等积分，学习 Redis、线程池、锁与 RabbitMQ 的完整业务链路。',
+    category: 'learning',
+    tags: ['Java 17', 'MyBatis', 'MySQL', 'Redis', 'RabbitMQ'],
+    sourcePath: 'projects/order-lab',
+    updatedAt: '2026-11-13',
+    documentId: 'order-lab',
+    entries: [{ label: '订单健康检查', url: '/order-api/actuator/health' }],
+    commands: [
+      { label: '构建订单后端', value: './mvnw -pl projects/order-lab -am package -DskipTests' },
+      { label: '启动订单后端', value: 'java -jar projects/order-lab/target/order-lab-0.1.0-SNAPSHOT.jar' },
+    ],
+    learningGoals: ['理解锁过期与数据库兜底', '理解线程池背压与持久化任务', '验证消息补投与消费幂等'],
+    capabilities: [
+      { title: '下单与库存', description: 'MyBatis 条件更新、幂等键、支付取消状态机。' },
+      { title: '消息可靠性', description: 'Outbox、Confirm、Return、有限重试与死信。' },
+    ],
+  },
+  {
     id: 'foundation-service',
     name: '基础工程',
     description: '从可运行的工程底座开始，建立独立、清晰、可持续扩展的学习空间。',

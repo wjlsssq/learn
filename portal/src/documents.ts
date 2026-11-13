@@ -3,6 +3,8 @@ import architecture from '../../docs/ARCHITECTURE.md?raw'
 import development from '../../docs/DEVELOPMENT.md?raw'
 import progress from '../../docs/PROGRESS.md?raw'
 import onboarding from '../../docs/PROJECT_ONBOARDING.md?raw'
+import orderLab from '../../projects/order-lab/README.md?raw'
+import orderLearning from '../../projects/order-lab/docs/LEARNING.md?raw'
 
 export interface WorkspaceDocument {
   id: string
@@ -13,6 +15,20 @@ export interface WorkspaceDocument {
 }
 
 export const documents: readonly WorkspaceDocument[] = [
+  {
+    id: 'order-lab',
+    title: '订单工程手册',
+    description: '订单链路、环境准备与故障验收。',
+    path: 'projects/order-lab/README.md',
+    content: orderLab,
+  },
+  {
+    id: 'order-learning',
+    title: 'Redis 与 MQ 学习',
+    description: '问答过滤、易错点与源码阅读路径。',
+    path: 'projects/order-lab/docs/LEARNING.md',
+    content: orderLearning,
+  },
   {
     id: 'overview',
     title: '项目说明',

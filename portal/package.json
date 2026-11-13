@@ -11,6 +11,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@learn/order-lab-web": "workspace:*",
     "@learn/http": "workspace:*",
     "@learn/ui": "workspace:*",
     "vue": "3.5.45"

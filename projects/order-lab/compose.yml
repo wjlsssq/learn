@@ -1,0 +1,35 @@
+name: learn-order-lab
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: order_lab
+      MYSQL_USER: order_app
+      MYSQL_PASSWORD: ${ORDER_DB_PASSWORD:?设置数据库密码}
+      MYSQL_ROOT_PASSWORD: ${ORDER_DB_ROOT_PASSWORD:?设置数据库管理员密码}
+    ports: ["127.0.0.1:13306:3306"]
+    volumes: ["order-mysql:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -h localhost -u root --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:7.4
+    environment:
+      ORDER_REDIS_PASSWORD: ${ORDER_REDIS_PASSWORD:?设置Redis密码}
+    command: ["/bin/sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$ORDER_REDIS_PASSWORD\""]
+    ports: ["127.0.0.1:16379:6379"]
+    volumes: ["order-redis:/data"]
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    environment:
+      RABBITMQ_DEFAULT_USER: order_app
+      RABBITMQ_DEFAULT_PASS: ${ORDER_MQ_PASSWORD:?设置MQ密码}
+      RABBITMQ_DEFAULT_VHOST: order-lab
+    ports: ["127.0.0.1:15672:5672", "127.0.0.1:15673:15672"]
+    volumes: ["order-rabbit:/var/lib/rabbitmq"]
+volumes:
+  order-mysql:
+  order-redis:
+  order-rabbit:

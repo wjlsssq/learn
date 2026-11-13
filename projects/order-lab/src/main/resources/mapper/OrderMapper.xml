@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.github.wjlsssq.learn.order.persistence.OrderMapper">
+  <select id="products" resultType="io.github.wjlsssq.learn.order.domain.Models$Product">SELECT * FROM product ORDER BY id LIMIT 100</select>
+  <select id="product" resultType="io.github.wjlsssq.learn.order.domain.Models$Product">SELECT * FROM product WHERE id=#{id}</select>
+  <select id="lockProduct" resultType="io.github.wjlsssq.learn.order.domain.Models$Product">SELECT * FROM product WHERE id=#{id} FOR UPDATE</select>
+  <select id="find" resultType="io.github.wjlsssq.learn.order.domain.Models$Order">SELECT * FROM purchase_order WHERE id=#{id}</select>
+  <!-- 行锁一直持有到事务提交；同订单的支付、取消、积分消费按同一行串行化。 -->
+  <select id="lockOrder" resultType="io.github.wjlsssq.learn.order.domain.Models$Order">SELECT * FROM purchase_order WHERE id=#{id} FOR UPDATE</select>
+  <select id="byRequest" resultType="io.github.wjlsssq.learn.order.domain.Models$Order">SELECT * FROM purchase_order WHERE buyer_id=#{buyer} AND request_key=#{key}</select>
+  <select id="recent" resultType="io.github.wjlsssq.learn.order.domain.Models$Order">
+    SELECT * FROM purchase_order
+    ORDER BY created_at DESC,id DESC LIMIT 50
+  </select>
+  <insert id="insertOrder">
+    INSERT INTO purchase_order(id,buyer_id,request_key,product_id,quantity,amount_cents,status,expires_at)
+    VALUES(#{id},#{request.buyerId},#{request.requestKey},#{request.productId},#{request.quantity},#{amount},'PENDING',DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 15 MINUTE))
+  </insert>
+  <!-- 库存判断与扣减在一条条件 UPDATE 中，不采用先查询再无条件覆盖。 -->
+  <update id="reserve">UPDATE product SET available=available-#{quantity},reserved=reserved+#{quantity} WHERE id=#{id} AND available &gt;= #{quantity}</update>
+  <update id="sell">UPDATE product SET reserved=reserved-#{quantity},sold=sold+#{quantity} WHERE id=#{id} AND reserved &gt;= #{quantity}</update>
+  <update id="release">UPDATE product SET reserved=reserved-#{quantity},available=available+#{quantity} WHERE id=#{id} AND reserved &gt;= #{quantity}</update>
+  <update id="pay">UPDATE purchase_order SET status='PAID',updated_at=UTC_TIMESTAMP(6) WHERE id=#{id} AND status='PENDING' AND expires_at &gt; UTC_TIMESTAMP(6)</update>
+  <update id="cancel">
+    UPDATE purchase_order SET status='CANCELLED',updated_at=UTC_TIMESTAMP(6) WHERE id=#{id} AND status='PENDING'
+    <if test="expiredOnly">AND expires_at &lt;= UTC_TIMESTAMP(6)</if>
+  </update>
+  <select id="expired" resultType="string">SELECT id FROM purchase_order WHERE status='PENDING' AND expires_at &lt;= UTC_TIMESTAMP(6) ORDER BY expires_at,id LIMIT 50</select>
+  <insert id="history">INSERT INTO order_history(order_id,action,trace_id,thread_name) VALUES(#{id},#{action},#{trace},#{thread})</insert>
+  <select id="historyFor" resultType="map">SELECT action,trace_id AS traceId,thread_name AS threadName,created_at AS createdAt FROM order_history WHERE order_id=#{id} ORDER BY id LIMIT 100</select>
+  <insert id="insertEvent">INSERT INTO outbox_event(id,order_id) VALUES(#{id},#{orderId})</insert>
+  <!-- SKIP LOCKED 跳过别的实例已领取的行；只能在同一个短事务内查询并领取。 -->
+  <select id="claimCandidate" resultType="io.github.wjlsssq.learn.order.domain.Models$Event">
+    SELECT * FROM outbox_event WHERE attempts &lt; 10 AND
+    ((status='PENDING' AND next_attempt_at &lt;= UTC_TIMESTAMP(6)) OR
+     (status='SENDING' AND lease_until &lt; UTC_TIMESTAMP(6)))
+    ORDER BY next_attempt_at,id LIMIT 1 FOR UPDATE SKIP LOCKED
+  </select>
+  <update id="claim">UPDATE outbox_event SET status='SENDING',attempts=attempts+1,lease_token=#{token},lease_until=DATE_ADD(UTC_TIMESTAMP(6),INTERVAL 60 SECOND) WHERE id=#{id}</update>
+  <select id="event" resultType="io.github.wjlsssq.learn.order.domain.Models$Event">SELECT * FROM outbox_event WHERE id=#{id}</select>
+  <update id="sent">UPDATE outbox_event SET status='SENT',lease_token=NULL,lease_until=NULL,last_error=NULL WHERE id=#{id} AND lease_token=#{token} AND status='SENDING'</update>
+  <update id="failedAttempt">
+    UPDATE outbox_event SET status=IF(attempts &gt;= 10,'FAILED','PENDING'),
+    next_attempt_at=TIMESTAMPADD(SECOND,LEAST(300,POW(2,attempts)),UTC_TIMESTAMP(6)),
+    lease_token=NULL,lease_until=NULL,last_error=#{error}
+    WHERE id=#{id} AND lease_token=#{token} AND status='SENDING'
+  </update>
+  <update id="expireExhausted">UPDATE outbox_event SET status='FAILED',lease_token=NULL,lease_until=NULL,last_error='最后一次发送租约超时，需核对消费结果' WHERE status='SENDING' AND attempts &gt;= 10 AND lease_until &lt; UTC_TIMESTAMP(6)</update>
+  <!-- 重放复用原始事件 ID；消费者仍需幂等。正在发送的事件不允许人工抢占。 -->
+  <update id="replay">UPDATE outbox_event SET status='PENDING',attempts=0,next_attempt_at=UTC_TIMESTAMP(6),last_error=NULL WHERE id=#{id} AND status IN ('FAILED','SENT')</update>
+  <select id="events" resultType="io.github.wjlsssq.learn.order.domain.Models$Event">SELECT * FROM outbox_event ORDER BY created_at DESC LIMIT 50</select>
+  <select id="consumed" resultType="string">SELECT order_id FROM consumed_event WHERE event_id=#{eventId}</select>
+  <insert id="recordConsumption">INSERT INTO consumed_event(event_id,order_id) VALUES(#{eventId},#{orderId})</insert>
+  <select id="awarded" resultType="long">SELECT points FROM points_ledger WHERE order_id=#{orderId}</select>
+  <insert id="insertPoints">INSERT INTO points_ledger(order_id,buyer_id,points) VALUES(#{order.id},#{order.buyerId},#{points})</insert>
+  <insert id="addPoints">INSERT INTO points_account(buyer_id,points) VALUES(#{buyer},#{points}) ON DUPLICATE KEY UPDATE points=points+#{points}</insert>
+  <select id="accounts" resultType="map">SELECT buyer_id AS buyerId,points FROM points_account ORDER BY buyer_id LIMIT 50</select>
+  <select id="eventCounts" resultType="map">SELECT status,COUNT(*) AS total,MIN(created_at) AS oldestCreatedAt FROM outbox_event GROUP BY status</select>
+</mapper>

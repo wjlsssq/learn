@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createHttpClient, HttpClientError } from '@learn/http'
 import AppIcon from './components/AppIcon.vue'
 import ProjectWorkspace from './components/ProjectWorkspace.vue'
+import OrderWorkbench from '@learn/order-lab-web'
 import { documents, parseDocument } from './documents'
 import { parseWorkspaceHash, projectHash } from './navigation'
 import { foundationBaseURL, projects, selectProjects } from './projects'
@@ -26,8 +27,6 @@ interface RuntimeRecord {
   message?: string
 }
 
-// HTTP 客户端负责传输机制；这里配置基础服务的地址及 4 秒超时，不负责启动进程。
-const client = createHttpClient({ baseURL: foundationBaseURL, timeoutMs: 4_000 })
 const query = ref('')
 const category = ref<ProjectCategory>('all')
 const sort = ref<ProjectSort>('recent')
@@ -138,6 +137,10 @@ async function checkCurrentProject() {
  * AbortController 用于页面销毁时取消请求，避免旧请求再写回已销毁的组件。
  */
 async function checkProject(project: ProjectDefinition) {
+  const client = createHttpClient({
+    baseURL: project.id === 'order-lab' ? '/order-api' : foundationBaseURL,
+    timeoutMs: 4_000,
+  })
   if (getRuntime(project.id).state === 'checking') return
   const controller = new AbortController()
   controllers.set(project.id, controller)
@@ -150,12 +153,14 @@ async function checkProject(project: ProjectDefinition) {
     let info: FoundationInfo | undefined
     let message: string | undefined
     try {
-      const response = await client.getJson<FoundationInfo>('/api/foundation/info', {
-        signal: controller.signal,
-      })
-      if (typeof response.name !== 'string' || !Array.isArray(response.capabilities))
-        throw new Error('服务信息格式不符合约定')
-      info = response
+      if (project.id === 'foundation-service') {
+        const response = await client.getJson<FoundationInfo>('/api/foundation/info', {
+          signal: controller.signal,
+        })
+        if (typeof response.name !== 'string' || !Array.isArray(response.capabilities))
+          throw new Error('服务信息格式不符合约定')
+        info = response
+      }
     } catch (error) {
       if (controller.signal.aborted) return
       message =
@@ -375,8 +380,9 @@ onBeforeUnmount(() => {
         tabindex="-1"
       >
         <!-- 工程页占据整个主内容区；首页统计、搜索和卡片不会继续叠在工程内容上方。 -->
+        <OrderWorkbench v-if="currentProject?.id === 'order-lab'" />
         <ProjectWorkspace
-          v-if="currentProject"
+          v-else-if="currentProject"
           :project="currentProject"
           :runtime="getRuntime(currentProject.id)"
           :copy-feedback="copyFeedback"

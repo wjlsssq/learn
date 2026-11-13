@@ -6,7 +6,7 @@
 
 当前基础阶段包含静态门户、基础服务及其公共能力。门户的工程登记信息不依赖后端或数据库。基础服务用于提供真实的运行信息、健康检查，并验证 Java Web 公共能力的接入。
 
-登录权限、数据库、中间件、Agent 和工程生成器均不属于本阶段。具体交付状态和验证结果只记录在 [PROGRESS.md](PROGRESS.md)。
+登录权限、Agent 和工程生成器仍不属于当前范围。MySQL、Redis、RabbitMQ 仅由新接入的 order-lab 工程使用，不强制基础服务依赖它们。具体交付状态和验证结果只记录在 [PROGRESS.md](PROGRESS.md)。
 
 ## 仓库组织
 
@@ -54,6 +54,8 @@ Java 工程 → shared/java
 页面职责分为三部分：`portal/src/navigation.ts` 解析和生成页面地址；`portal/src/App.vue` 保留导航外壳、查找当前工程并维护运行状态；`portal/src/components/ProjectWorkspace.vue` 接收工程数据和状态，通过事件请求返回、探测或命令复制。通用工程页不重复维护运行数据，也不自动请求或启动进程。
 
 ## Java 基础能力
+
+订单学习工程位于 projects/order-lab：后端独立 Maven 模块，前端 web/ 作为工程界面模块由门户加载，进入文件夹即显示实际操作页面。数据库为 order_lab，Redis 键前缀 order-lab:，MQ 使用独立 order-lab vhost。订单、库存、Outbox、积分暂为同一数据库内的模块化单体，非跨库微服务事务；详见[订单架构](../projects/order-lab/docs/DESIGN.md)。门户为其增加 /order-api 代理和真实健康探测，基础工程启动路径不变。
 
 `web-support` 以普通依赖提供公共 Web 机制，应用通过 `@Import(WebSupportConfiguration.class)` 显式接入。它不负责应用启动、不扫描或接管业务包，也不引入数据库或中间件。
 

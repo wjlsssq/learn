@@ -21,6 +21,7 @@
     <modules>
         <module>shared/java/web-support</module>
         <module>projects/foundation-service</module>
+        <module>projects/order-lab</module>
     </modules>
 
     <properties>

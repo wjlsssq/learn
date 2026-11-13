@@ -2,7 +2,9 @@
 
 一个用于持续接入学习成果的工程仓库。通过文件夹式门户组织独立工程，复用已经稳定的基础能力；每次根据学习链路设计和接入功能。
 
-本阶段聚焦 Vue 3 / TypeScript 门户、Java 17 / Spring Boot 基础服务、公共 Web 能力和开发规范。数据库、Redis、MQ、Agent、Python 等能力随实际学习需求加入。无需登录；不包含工程生成工具。
+工作台已接入 Vue 3 / TypeScript 门户、Java 17 / Spring Boot 基础服务及订单可靠性学习工程。订单工程按首条学习链路引入 MySQL、原生 MyBatis、Redis 和 RabbitMQ；Agent/Python 仍按需接入。无需登录；不包含工程生成工具。
+
+新增的[订单可靠性实验室](projects/order-lab/README.md)包含下单、库存、模拟支付、超时取消、可靠消息和幂等积分；先看[问答过滤总结](projects/order-lab/docs/LEARNING.md)，再按工程手册启动。新工程运行验收由用户负责，不代表已通过生产验收。
 
 ## 快速开始
 

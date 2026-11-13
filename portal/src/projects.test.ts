@@ -5,12 +5,12 @@ describe('project directory', () => {
   it('finds a project by its technical capability without case sensitivity', () => {
     expect(
       selectProjects(projects, '  JAVA 17 ', 'all', 'recent').map((project) => project.id),
-    ).toEqual(['foundation-service'])
+    ).toEqual(['order-lab', 'foundation-service'])
   })
 
-  it('keeps unimplemented learning projects out of category results', () => {
-    expect(selectProjects(projects, '', 'learning', 'name')).toEqual([])
-    expect(selectProjects(projects, 'Redis', 'all', 'recent')).toEqual([])
+  it('registers the implemented order learning project', () => {
+    expect(selectProjects(projects, '', 'learning', 'name').map((project) => project.id)).toEqual(['order-lab'])
+    expect(selectProjects(projects, 'Redis', 'all', 'recent').map((project) => project.id)).toEqual(['order-lab'])
   })
 
   it('keeps source registry ordering unchanged while filtering and sorting', () => {

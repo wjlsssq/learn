@@ -23,6 +23,9 @@ importers:
 
   portal:
     dependencies:
+      '@learn/order-lab-web':
+        specifier: workspace:*
+        version: link:../projects/order-lab/web
       '@learn/http':
         specifier: workspace:*
         version: link:../shared/frontend/http
@@ -48,6 +51,19 @@ importers:
       vue-tsc:
         specifier: 3.3.14
         version: 3.3.14(typescript@5.9.3)
+
+  projects/order-lab/web:
+    dependencies:
+      '@learn/http':
+        specifier: workspace:*
+        version: link:../../../shared/frontend/http
+      vue:
+        specifier: 3.5.45
+        version: 3.5.45(typescript@5.9.3)
+    devDependencies:
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   shared/frontend/http:
     devDependencies:
