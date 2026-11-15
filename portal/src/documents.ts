@@ -5,6 +5,7 @@ import progress from '../../docs/PROGRESS.md?raw'
 import onboarding from '../../docs/PROJECT_ONBOARDING.md?raw'
 import orderLab from '../../projects/order-lab/README.md?raw'
 import orderLearning from '../../projects/order-lab/docs/LEARNING.md?raw'
+import dockerLearning from '../../projects/order-lab/docs/DOCKER.md?raw'
 
 export interface WorkspaceDocument {
   id: string
@@ -15,6 +16,13 @@ export interface WorkspaceDocument {
 }
 
 export const documents: readonly WorkspaceDocument[] = [
+  {
+    id: 'docker-learning',
+    title: 'Docker 学习',
+    description: '结合订单工程理解容器、网络、数据卷与 Compose。',
+    path: 'projects/order-lab/docs/DOCKER.md',
+    content: dockerLearning,
+  },
   {
     id: 'order-lab',
     title: '订单工程手册',

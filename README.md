@@ -64,6 +64,7 @@ docs/                           架构、开发、接入和进度文档
 
 ## 文档入口
 
+- [Docker 学习](projects/order-lab/docs/DOCKER.md)：结合订单工程理解镜像、容器、Compose、端口、变量和持久化。
 - [当前进度](docs/PROGRESS.md)：当前状态、验证证据、阻塞和下一步，作为唯一进度记录。
 - [架构约定](docs/ARCHITECTURE.md)：职责边界、依赖方向和扩展原则。
 - [开发指南](docs/DEVELOPMENT.md)：环境、运行、构建和故障排查。

@@ -6,6 +6,8 @@
 
 ## 学什么、怎么读
 
+Docker 初学者可先看 [Docker 学习：从订单工程理解容器](docs/DOCKER.md)，了解本机 Java 如何连接容器中的 MySQL、Redis 和 RabbitMQ，以及端口、变量、数据卷和生命周期的作用。门户文档区也提供“Docker 学习”入口。
+
 先读 [问答过滤与学习路线](docs/LEARNING.md)，在门户中也可以进入“Redis 与 MQ 学习”文档；再读 [架构与接口](docs/DESIGN.md)、[故障验收手册](docs/ACCEPTANCE.md)。本页提供可直接操作的环境与学习步骤。
 
 实际业务链路：
