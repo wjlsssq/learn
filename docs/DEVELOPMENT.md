@@ -21,6 +21,8 @@
 
 Docker 和 Compose 的原理、订单资源配置及观察实验见 [Docker 学习文档](../projects/order-lab/docs/DOCKER.md)。命令由用户自行执行，当前 Docker 仅运行订单中间件，门户与 Java 后端仍在宿主机启动。
 
+订单本地配置统一保存在 `projects/order-lab/.env`，从同目录 `.env.example` 复制并填写。`pnpm order:up` 启动中间件，`pnpm order:ps` 查看状态，`pnpm order:stop` 停止中间件；构建订单 JAR 后用 `pnpm order:start` 启动 Java。四条命令通过 `tooling/order-lab.mjs` 读取文件并传递给子进程，文件中的 `ORDER_*` 优先于终端同名值；不覆盖通用进程变量、不回显密码。仅增加根 package.json 脚本，无新增依赖或锁文件变化。
+
 订单工程的中间件、密码变量、迁移、独立启动和故障验收见[订单手册](../projects/order-lab/README.md)。前端入口 #projects/order-lab，后端端口 18081；Vite 将 /order-api 转发到订单后端。生产静态门户需要另配同路径反向代理。订单集成测试默认跳过，必须显式开启 ORDER_INTEGRATION_TESTS 并准备隔离的真实资源；代理未执行。基础服务仍使用原有 pnpm dev:backend。
 
 | 工具    | 基线                  | 说明                                                           |

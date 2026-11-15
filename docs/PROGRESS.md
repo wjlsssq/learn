@@ -10,7 +10,16 @@
 
 此前已同步协作规则、开发指南和接入文档。以下 v0.1 验收记录属于运行与测试分工调整之前的历史结果，不代表后续改动已经验证。
 
-## 本次改动：Docker 学习文档
+## 本次改动：订单工程统一读取 .env
+
+- 状态：已实现待用户验证。
+- 新增 `tooling/order-lab.mjs` 和 `order:up`、`order:ps`、`order:stop`、`order:start` 命令，Docker 与本机 Java 读取同一份 `projects/order-lab/.env`，无需逐项手写 `$env:`。
+- 使用 Node 内置 parseEnv；只传递文件中的 ORDER_* 配置，文件优先于终端同名值，缺少必需密码时提示变量名，不打印值。未引入依赖，不修改数据库初始化或业务行为。
+- 更新 env 模板、订单手册、Docker 学习文档、开发/架构说明及门户启动命令；保留并排除用户已有的 ConcurrencyLabController.java 改动。
+- 静态审查配置路径、环境传递、退出处理及文档一致性；未执行脚本、Docker、启动、构建、格式检查、类型检查、Lint 或测试，由用户验证。
+- 建议用户填写 .env 后执行 order:up / order:ps，依赖就绪后构建订单 JAR 并执行 order:start；同时确认缺少文件或空密码时的提示。推送仍受此前自动审批拒绝限制，未再次尝试。
+
+## 此前改动：Docker 学习文档
 
 - 状态：文档及入口已实现待用户验证。
 - 新增[Docker 学习文档](../projects/order-lab/docs/DOCKER.md)，结合真实 Compose、Java 配置、Flyway 和消息拓扑解释镜像、容器、Windows/WSL 2、端口映射、服务发现、变量插值、命名卷、健康检查与生命周期。

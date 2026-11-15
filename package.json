@@ -10,6 +10,10 @@
   "scripts": {
     "dev": "pnpm --filter @learn/portal dev",
     "dev:backend": "node tooling/backend.mjs dev",
+    "order:up": "node tooling/order-lab.mjs up",
+    "order:ps": "node tooling/order-lab.mjs ps",
+    "order:stop": "node tooling/order-lab.mjs stop",
+    "order:start": "node tooling/order-lab.mjs start",
     "build": "pnpm -r --if-present build",
     "build:backend": "node tooling/backend.mjs build",
     "typecheck": "pnpm -r --if-present typecheck",

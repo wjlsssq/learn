@@ -55,6 +55,8 @@ Java 工程 → shared/java
 
 ## Java 基础能力
 
+订单启动工具 `tooling/order-lab.mjs` 读取所属工程的 `projects/order-lab/.env`，把 `ORDER_*` 配置交给 Compose 或本机 Java 子进程；文件值优先，配置不进入门户。它不接管其他工程，也不自动构建、等待服务就绪或修改持久化账号。使用 Node 内置 dotenv 解析，无额外依赖。
+
 订单学习工程位于 projects/order-lab：后端独立 Maven 模块，前端 web/ 作为工程界面模块由门户加载，进入文件夹即显示实际操作页面。数据库为 order_lab，Redis 键前缀 order-lab:，MQ 使用独立 order-lab vhost。订单、库存、Outbox、积分暂为同一数据库内的模块化单体，非跨库微服务事务；详见[订单架构](../projects/order-lab/docs/DESIGN.md)。门户为其增加 /order-api 代理和真实健康探测，基础工程启动路径不变。
 
 `web-support` 以普通依赖提供公共 Web 机制，应用通过 `@Import(WebSupportConfiguration.class)` 显式接入。它不负责应用启动、不扫描或接管业务包，也不引入数据库或中间件。

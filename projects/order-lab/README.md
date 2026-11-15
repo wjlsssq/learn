@@ -41,21 +41,39 @@ HTTP 下单 → Redis Lua 限流 → MyBatis / MySQL 事务
 
 需要 JDK 17、现有仓库的 Node/pnpm、Docker Compose。使用现有 Maven Wrapper，数据库迁移由 Flyway 在启动时执行。首次启动必须能下载 Maven 依赖和 Docker 镜像。
 
-在仓库根目录打开 PowerShell，给当前终端设置自己的本地密码，空值会使配置失败：
+在仓库根目录打开 PowerShell。首次使用时，把 `projects/order-lab/.env.example` 复制为同目录的 `.env`（已有 `.env` 时不要覆盖），在编辑器中填写四个密码：
 
 ```powershell
-$env:ORDER_DB_PASSWORD = '换成你的本地数据库密码'
-$env:ORDER_DB_ROOT_PASSWORD = '换成不同的本地管理员密码'
-$env:ORDER_REDIS_PASSWORD = '换成你的本地Redis密码'
-$env:ORDER_MQ_PASSWORD = '换成你的本地MQ密码'
-$env:ORDER_LAB_ENABLED = 'true'
-docker compose -f projects/order-lab/compose.yml up -d
-docker compose -f projects/order-lab/compose.yml ps
-.\mvnw.cmd -pl projects/order-lab -am package -DskipTests
-java -jar projects/order-lab/target/order-lab-0.1.0-SNAPSHOT.jar
+notepad projects/order-lab/.env
 ```
 
-先等待 MySQL 为 healthy，再启动 Java。Linux/macOS 使用 export 设置同名变量，并把 .\mvnw.cmd 换成 ./mvnw。不要将真实密码提交。示例 .env 文件只列变量；Compose 的 env-file 不会自动传入 Java 进程，Java 仍需要当前终端环境变量。
+文件内容示例（替换占位文字，不要留空）：
+
+```dotenv
+ORDER_DB_PASSWORD='换成你的本地数据库密码'
+ORDER_DB_ROOT_PASSWORD='换成不同的本地管理员密码'
+ORDER_REDIS_PASSWORD='换成你的本地Redis密码'
+ORDER_MQ_PASSWORD='换成你的本地MQ密码'
+ORDER_LAB_ENABLED=true
+```
+
+使用单行、单引号包裹的密码，密码内不要包含单引号；不使用 `${变量}` 引用。保存为 UTF-8，文件名为 `.env`，不是 `.env.txt`。然后执行：
+
+```powershell
+pnpm order:up
+pnpm order:ps
+```
+
+等待 MySQL 为 healthy，并确认 Redis 和 RabbitMQ 正常运行后，构建并启动 Java：
+
+```powershell
+.\mvnw.cmd -pl projects/order-lab -am package -DskipTests
+pnpm order:start
+```
+
+`order:up`、`order:ps`、`order:stop` 和 `order:start` 调用 `tooling/order-lab.mjs`，每次读取同一份 `.env`，文件中的 `ORDER_*` 优先于终端同名变量。Docker 和 Java 分别从脚本继承配置，无需手写 `$env:`。`order:start` 只运行已构建 JAR，不自动构建或启动 Docker。Linux/macOS 把 Maven 命令换成 `./mvnw`；这些 pnpm 命令不变。直接执行 `java -jar` 仍不会自动读取 `.env`。
+
+修改 `.env` 后，对中间件重新执行 `pnpm order:up`，对 Java 先 Ctrl+C 再 `pnpm order:start`。密码变更还需同步服务中的真实账号，旧卷不会自动改密。`.env` 已被 Git 忽略，实际密码不提交。
 
 新增了 @learn/order-lab-web 工作区包。先在仓库根目录执行 pnpm install --frozen-lockfile 建立新包链接（锁文件复用现有 Vue/TypeScript 版本，没有新增第三方前端版本），再运行 pnpm dev，打开 http://127.0.0.1:5173/#projects/order-lab。代理没有执行依赖安装。
 
@@ -73,7 +91,7 @@ ORDER_DB_URL、ORDER_DB_USER、ORDER_REDIS_HOST/PORT、ORDER_MQ_HOST/PORT/USER�
 停止 Java 用 Ctrl+C。停止中间件并保留数据：
 
 ```powershell
-docker compose -f projects/order-lab/compose.yml stop
+pnpm order:stop
 ```
 
 不要为了重试启动而删除卷；已有卷中的数据库/MQ密码不会因更改环境变量自动重置。

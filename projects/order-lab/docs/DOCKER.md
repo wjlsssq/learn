@@ -121,9 +121,9 @@ environment:
 
 这里存在三层配置：
 
-1. PowerShell 的 `$env:ORDER_DB_PASSWORD` 提供 Compose 解析所需的值。
+1. 本工程的 `tooling/order-lab.mjs` 读取 `projects/order-lab/.env`，将 `ORDER_DB_PASSWORD` 等配置放入子进程环境，无需手写 `$env:`。
 2. Compose 将解析结果作为容器中的 `MYSQL_PASSWORD` 交给 MySQL 镜像。它不会因为变量存在于终端就把所有变量自动传进容器。
-3. 同一终端启动的 Java 继承 `ORDER_DB_PASSWORD`，Spring 再用它配置数据源密码。
+3. 使用 `pnpm order:start` 启动的 Java 同样从脚本继承 `ORDER_DB_PASSWORD`，Spring 再用它配置数据源密码。
 
 `${变量:?提示}` 表示变量必须已设置且非空，否则停止解析并显示提示，防止无意以空密码启动。[Compose 变量插值](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
 
@@ -134,7 +134,9 @@ environment:
 docker compose --env-file projects/order-lab/.env -f projects/order-lab/compose.yml up -d
 ```
 
-这个文件供 Compose 读取，不会给之后单独执行的 `java -jar` 自动设置环境。Java 仍需自己的环境变量。当前终端同名变量优先于 env 文件，应避免旧值覆盖新值；`.env` 已被仓库忽略，不提交真实密码。
+直接使用 Compose 的 `--env-file` 不会给之后单独执行的 `java -jar` 自动设置环境，且 Compose 默认优先使用终端同名变量。本工程推荐 `pnpm order:up` 和 `pnpm order:start`：脚本使用 Node 内置 `parseEnv` 读取文件，明确让文件中的 ORDER_* 优先于终端同名值，再传给各自子进程；并检查必需密码非空。`.env` 已被仓库忽略，不提交真实密码。[Node dotenv 解析说明](https://nodejs.org/api/environment_variables.html#dotenv)
+
+为统一 Node 和 Compose 的读取结果，配置值使用单行、单引号包裹的字面量，密码不含单引号，不使用 `${其他变量}` 引用。脚本不修改当前 PowerShell 的环境；Java 应通过 `pnpm order:start` 启动。
 
 ### 4.5 为什么 Redis 命令里写两个美元符号
 
@@ -201,29 +203,33 @@ docker compose version
 
 ### 第二步：准备环境，再启动中间件
 
-在同一 PowerShell 终端设置本地密码，占位文字需要替换；Java 后续也从这个终端启动。
+首次将 `projects/order-lab/.env.example` 复制为同目录 `.env`，已有文件不要覆盖。用编辑器填写密码，保存为 UTF-8；实际文件名不能是 `.env.txt`：
 
-```powershell
-$env:ORDER_DB_PASSWORD = '替换为你的数据库密码'
-$env:ORDER_DB_ROOT_PASSWORD = '替换为不同的管理员密码'
-$env:ORDER_REDIS_PASSWORD = '替换为你的Redis密码'
-$env:ORDER_MQ_PASSWORD = '替换为你的MQ密码'
-$env:ORDER_LAB_ENABLED = 'true'
-docker compose -f projects/order-lab/compose.yml config --quiet
-docker compose -f projects/order-lab/compose.yml up -d
-docker compose -f projects/order-lab/compose.yml ps -a
+```dotenv
+ORDER_DB_PASSWORD='替换为你的数据库密码'
+ORDER_DB_ROOT_PASSWORD='替换为不同的管理员密码'
+ORDER_REDIS_PASSWORD='替换为你的Redis密码'
+ORDER_MQ_PASSWORD='替换为你的MQ密码'
+ORDER_LAB_ENABLED=true
 ```
 
-`config --quiet` 检查配置解析，不输出完整配置；去掉 `--quiet` 的输出可能含展开后的密码。实验开关 `ORDER_LAB_ENABLED` 供 Java 使用，不是 Docker 启动开关。
+在仓库根目录执行：
+
+```powershell
+pnpm order:up
+pnpm order:ps
+```
+
+它们每次读取 `.env`，修改文件后重新执行即可。实验开关 `ORDER_LAB_ENABLED` 供 Java 使用，不是 Docker 启动开关。直接用 Compose 检查配置时可加 `config --quiet`，普通 `config` 输出可能包含密码。
 
 观察三个服务是否持续运行、MySQL 是否变为 healthy，再结合日志确认 Redis/MQ 就绪，随后按[工程手册](../README.md)启动 Java 和门户。
 
 ### 第三步：查看日志与容器内部状态
 
 ```powershell
-docker compose -f projects/order-lab/compose.yml logs --tail 80 mysql redis rabbitmq
-docker compose -f projects/order-lab/compose.yml exec redis redis-cli --askpass PING
-docker compose -f projects/order-lab/compose.yml exec mysql mysql -u order_app -p order_lab
+docker compose --env-file projects/order-lab/.env -f projects/order-lab/compose.yml logs --tail 80 mysql redis rabbitmq
+docker compose --env-file projects/order-lab/.env -f projects/order-lab/compose.yml exec redis redis-cli --askpass PING
+docker compose --env-file projects/order-lab/.env -f projects/order-lab/compose.yml exec mysql mysql -u order_app -p order_lab
 ```
 
 `logs` 查看服务标准输出与错误；`exec` 在已有运行容器里执行额外命令，不会重新创建服务。Redis 交互输入密码后预期返回 `PONG`；MySQL 交互输入应用账号密码后，可执行只读查询：
@@ -241,9 +247,9 @@ SELECT id, name, available, reserved, sold FROM product;
 先用 Ctrl+C 停止你自己启动的 Java，再停止中间件：
 
 ```powershell
-docker compose -f projects/order-lab/compose.yml stop
-docker compose -f projects/order-lab/compose.yml ps -a
-docker compose -f projects/order-lab/compose.yml up -d
+pnpm order:stop
+pnpm order:ps
+pnpm order:up
 ```
 
 预期停止后容器仍存在，恢复后同一卷的数据还在。可以先在界面创建一笔订单并记录 ID，恢复中间件与 Java 后再查询它，验证持久化。
@@ -251,7 +257,7 @@ docker compose -f projects/order-lab/compose.yml up -d
 若只是想移除容器和默认网络，同时保留命名卷，可以在停止相关学习进程后使用：
 
 ```powershell
-docker compose -f projects/order-lab/compose.yml down
+docker compose --env-file projects/order-lab/.env -f projects/order-lab/compose.yml down
 ```
 
 普通 `down` 默认保留本工程的命名卷；再 `up -d` 可以重新挂载。[down 命令说明](https://docs.docker.com/reference/cli/docker/compose/down/)
@@ -285,7 +291,7 @@ docker compose -f projects/order-lab/compose.yml down
 
 ```powershell
 docker context show
-docker compose -f projects/order-lab/compose.yml port mysql 3306
+docker compose --env-file projects/order-lab/.env -f projects/order-lab/compose.yml port mysql 3306
 docker volume inspect learn-order-lab_order-mysql
 ```
 

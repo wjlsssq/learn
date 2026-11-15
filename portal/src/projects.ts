@@ -31,7 +31,8 @@ export const projects: readonly ProjectDefinition[] = [
     entries: [{ label: '订单健康检查', url: '/order-api/actuator/health' }],
     commands: [
       { label: '构建订单后端', value: './mvnw -pl projects/order-lab -am package -DskipTests' },
-      { label: '启动订单后端', value: 'java -jar projects/order-lab/target/order-lab-0.1.0-SNAPSHOT.jar' },
+      { label: '启动订单中间件', value: 'pnpm order:up' },
+      { label: '启动订单后端', value: 'pnpm order:start' },
     ],
     learningGoals: ['理解锁过期与数据库兜底', '理解线程池背压与持久化任务', '验证消息补投与消费幂等'],
     capabilities: [
